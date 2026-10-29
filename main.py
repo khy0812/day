@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
+import altair as alt  # 커스텀 파스텔 핑크 그래프 시각화를 위한 라이브러리
 
 # 페이지 기본 설정
 st.set_page_config(page_title="시험 D-Day & 학습 스케줄러", layout="centered")
@@ -81,6 +82,19 @@ if st.button("🚀 학습 스케줄 계산하기"):
                 use_container_width=True
             )
 
-            # 시각화 그래프
+            # 연한 파스텔 핑크색 그래프 시각화 (Altair 활용)
             st.subheader("📊 과목별 공부 시간 비중 차트")
-            st.bar_chart(data=df, x="과목", y="일일 권장 공부시간(시간)")
+            
+            chart = alt.Chart(df).mark_bar(
+                color='#FFB6C1',  # 연한 파스텔 핑크 헥사 코드
+                cornerRadiusTopLeft=5,
+                cornerRadiusTopRight=5
+            ).encode(
+                x=alt.X('과목:N', title='과목명', sort=None),
+                y=alt.Y('일일 권장 공부시간(시간):Q', title='권장 공부시간 (시간)'),
+                tooltip=['과목', '일일 권장 공부시간(시간)']
+            ).properties(
+                height=350
+            )
+            
+            st.altair_chart(chart, use_container_width=True
