@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-import altair as alt  # 커스텀 파스텔 핑크 그래프 시각화를 위한 라이브러리
 
 # 페이지 기본 설정
 st.set_page_config(page_title="시험 D-Day & 학습 스케줄러", layout="centered")
@@ -47,9 +46,9 @@ d_day = (exam_date - date.today()).days
 
 if st.button("🚀 학습 스케줄 계산하기"):
     if d_day <= 0:
-        st.error("⚠️ 시험 날짜는 오늘 이후로 설정해야 합니다!")[cite: 1]
+        st.error("⚠️ 시험 날짜는 오늘 이후로 설정해야 합니다!")
     elif edited_df.empty or edited_df["과목"].dropna().empty:
-        st.warning("⚠️ 최소 1개 이상의 과목 정보를 입력해 주세요.")[cite: 1]
+        st.warning("⚠️ 최소 1개 이상의 과목 정보를 입력해 주세요.")
     else:
         # 결측치 제거
         df = edited_df.dropna(subset=["과목"]).copy()
@@ -82,19 +81,11 @@ if st.button("🚀 학습 스케줄 계산하기"):
                 use_container_width=True
             )
 
-            # 연한 파스텔 핑크색 그래프 시각화 (Altair 활용)
+            # 연한 파스텔 핑크색(#FFB6C1) 막대 그래프 시각화
             st.subheader("📊 과목별 공부 시간 비중 차트")
-            
-            chart = alt.Chart(df).mark_bar(
-                color='#FFB6C1',  # 연한 파스텔 핑크 헥사 코드
-                cornerRadiusTopLeft=5,
-                cornerRadiusTopRight=5
-            ).encode(
-                x=alt.X('과목:N', title='과목명', sort=None),
-                y=alt.Y('일일 권장 공부시간(시간):Q', title='권장 공부시간 (시간)'),
-                tooltip=['과목', '일일 권장 공부시간(시간)']
-            ).properties(
-                height=350
+            st.bar_chart(
+                data=df,
+                x="과목",
+                y="일일 권장 공부시간(시간)",
+                color="#FFB6C1"
             )
-            
-            st.altair_chart(chart, use_container_width=True
