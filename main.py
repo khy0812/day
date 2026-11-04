@@ -2,13 +2,29 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 
-# ---------------------------------------------------------
-# 페이지 기본 설정 및 타이틀
-# ---------------------------------------------------------
+# 페이지 기본 설정
 st.set_page_config(page_title="시험 D-Day & 학습 스케줄러", layout="centered")
 
 st.title("📚 맞춤형 시험 D-Day & 학습 스케줄러")
 st.write("시험일과 개인별 과목 목표, 난이도를 설정하여 최적의 공부 시간을 배분받으세요.")
+
+# ---------------------------------------------------------
+# 세션 상태(Session State) 초기화 로직
+# ---------------------------------------------------------
+# 기본 과목 데이터 정의
+default_data = pd.DataFrame([
+    {"과목": "수학", "목표점수": 90, "난이도(1~5)": 5},
+    {"과목": "영어", "목표점수": 85, "난이도(1~5)": 4},
+    {"과목": "국어", "목표점수": 95, "난이도(1~5)": 3}
+])
+
+# 초기화 버튼 클릭 시 실행할 함수 (세션 값을 삭제하고 초기화)
+def reset_data():
+    if "editor_key" in st.session_state:
+        st.session_state["editor_key"] += 1  # 위젯 키를 변경하여 에디터 상태를 강제 초기화
+
+if "editor_key" not in st.session_state:
+    st.session_state["editor_key"] = 0
 
 # ---------------------------------------------------------
 # 1. 입력 영역 (시험 날짜 및 하루 공부 가능 시간)
@@ -26,19 +42,12 @@ head_col1, head_col2 = st.columns([3, 1])
 with head_col1:
     st.subheader("📝 과목별 정보 입력 (수정/추가 가능)")
 with head_col2:
-    if st.button("🔄 입력 초기화"):
-        st.rerun()
+    st.button("🔄 입력 초기화", on_click=reset_data)
 
-# 기본 제공 과목 데이터
-default_data = pd.DataFrame([
-    {"과목": "수학", "목표점수": 90, "난이도(1~5)": 5},
-    {"과목": "영어", "목표점수": 85, "난이도(1~5)": 4},
-    {"과목": "국어", "목표점수": 95, "난이도(1~5)": 3}
-])
-
-# 동적 데이터 에디터 위젯
+# 동적 데이터 에디터 위젯 (key 값을 변경하여 완전한 초기화 구현)
 edited_df = st.data_editor(
     default_data,
+    key=f"data_editor_{st.session_state['editor_key']}",
     num_rows="dynamic",
     column_config={
         "과목": st.column_config.TextColumn("과목명", required=True),
@@ -56,11 +65,11 @@ d_day = (exam_date - date.today()).days
 if st.button("🚀 학습 스케줄 계산하기", type="primary"):
     # [예외 처리 1] 시험 날짜 검증
     if d_day <= 0:
-        st.error("⚠️ 시험 날짜는 오늘 이후(D-1 이상)로 설정해야 합니다!")
+        st.error("⚠️ 시험 날짜는 오늘 이후(D-1 이상)로 설정해야 합니다!")[cite: 1]
     
     # [예외 처리 2] 입력 데이터 존재 여부 검증
     elif edited_df.empty or edited_df["과목"].dropna().str.strip().empty:
-        st.warning("⚠️ 최소 1개 이상의 과목명을 입력해 주세요.")
+        st.warning("⚠️ 최소 1개 이상의 과목명을 입력해 주세요.")[cite: 1]
     
     else:
         # 공백 제거 및 유효 과목 데이터 정리
