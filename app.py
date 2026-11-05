@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-import matplotlib.pyplot as plt
 
 # ---------------------------------------------------------
-# 페이지 기본 설정
+# 1. 페이지 기본 설정 및 타이틀
 # ---------------------------------------------------------
 st.set_page_config(page_title="시험 D-Day & 학습 스케줄러", layout="centered")
 
@@ -12,7 +11,7 @@ st.title("📚 맞춤형 시험 D-Day & 학습 스케줄러")
 st.write("시험일과 개인별 과목 목표, 난이도를 설정하고 아래 버튼을 눌러 공부 시간을 배분받으세요.")
 
 # ---------------------------------------------------------
-# 세션 상태(Session State) 초기화 로직 (오류 없는 안전한 리셋)
+# 2. 세션 상태(Session State) 초기화 로직 (오류 없는 안전한 리셋)
 # ---------------------------------------------------------
 default_data = pd.DataFrame([
     {"과목": "수학", "목표점수": 90, "난이도(1~5)": 5},
@@ -27,7 +26,7 @@ def reset_data():
     st.session_state["editor_key"] += 1
 
 # ---------------------------------------------------------
-# 1. 입력 영역 (시험 날짜 및 하루 공부 가능 시간)
+# 3. 입력 영역 (시험 날짜 및 하루 공부 가능 시간)
 # ---------------------------------------------------------
 col1, col2 = st.columns(2)
 with col1:
@@ -58,7 +57,7 @@ edited_df = st.data_editor(
 )
 
 # ---------------------------------------------------------
-# 2. 핵심 연산 및 예외 처리 (버튼 클릭 시에만 실행)
+# 4. 핵심 연산 및 예외 처리 (버튼 클릭 시에만 실행)
 # ---------------------------------------------------------
 d_day = (exam_date - date.today()).days
 
@@ -72,7 +71,7 @@ if st.button("🚀 학습 스케줄 계산하기", type="primary"):
         st.warning("⚠️ 최소 1개 이상의 과목명을 입력해 주세요.")[cite: 1]
     
     else:
-        # 데이터 정제 및 타입 변환 (오류 방지)
+        # 데이터 정제 및 타입 안전 변환
         df = edited_df.dropna(subset=["과목"]).copy()
         df["과목"] = df["과목"].astype(str).str.strip()
         df = df[df["과목"] != ""]
@@ -87,15 +86,15 @@ if st.button("🚀 학습 스케줄 계산하기", type="primary"):
             df["중요도"] = df["목표점수"] * df["난이도(1~5)"]
             total_weight = df["중요도"].sum()
 
-            # [예외 처리 4] 중요도 합계 0 방지
+            # [예외 처리 4] 중요도 합계 0 방지 (ZeroDivisionError 예방)
             if total_weight == 0:
                 st.error("⚠️ 모든 과목의 목표 점수 또는 난이도가 0일 수 없습니다.")
             else:
-                # 권장 공부 시간 분배 계산 (소수점 첫째 자리 반올림)
+                # 권장 공부 시간 분배 연산 (소수점 첫째 자리 반올림)
                 df["일일 권장 공부시간(시간)"] = (df["중요도"] / total_weight * daily_hours).round(1)
 
                 # ---------------------------------------------------------
-                # 3. 결과 시각화 및 출력 영역 (버튼을 눌렀을 때만 표시)
+                # 5. 결과 시각화 및 출력 영역 (버튼 클릭 시에만 출력)
                 # ---------------------------------------------------------
                 st.divider()
                 st.success("🎉 개인 맞춤형 학습 스케줄이 성공적으로 생성되었습니다!")
@@ -112,23 +111,12 @@ if st.button("🚀 학습 스케줄 계산하기", type="primary"):
                     use_container_width=True
                 )
 
-                # 연한 파스텔 핑크색 막대그래프 시각화 (Matplotlib 사용으로 에러 방지)
-                st.subheader("📊 과목별 공부 시간 비중 차트")
-                
-                fig, ax = plt.subplots(figsize=(8, 4))
-                bars = ax.bar(df["과목"], df["일일 권장 공부시간(시간)"], color="#FFB6C1", edgecolor="#FF69B4", linewidth=1.2)
-                
-                # 막대 상단 수치 표시
-                for bar in bars:
-                    height = bar.get_height()
-                    ax.annotate(f'{height}시간',
-                                xy=(bar.get_x() + bar.get_width() / 2, height),
-                                xytext=(0, 3), 
-                                textcoords="offset points",
-                                ha='center', va='bottom', fontsize=10)
-
-                ax.set_ylabel("권장 공부시간 (시간)")
-                ax.spines['top'].set_visible(False)
-                ax.spines['right'].set_visible(False)
-                
-                st.pyplot(fig)
+                # 막대 형태 시각화 (기본 진행률 바 및 텍스트 조합으로 100% 에러 차단)
+                st.subheader("📊 과목별 공부 시간 비중")
+                for index, row in df.iterrows():
+                    subject = row["과목"]
+                    hours = row["일일 권장 공부시간(시간)"]
+                    ratio = min(max(hours / daily_hours, 0.0), 1.0)
+                    
+                    st.write(f"**{subject}**: {hours}시간 / 하루 {daily_hours}시간")
+                    st.progress(ratio)
