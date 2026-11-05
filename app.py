@@ -11,7 +11,7 @@ st.title("📚 맞춤형 시험 D-Day & 학습 스케줄러")
 st.write("시험일과 개인별 과목 목표, 난이도를 설정하고 아래 버튼을 눌러 공부 시간을 배분받으세요.")
 
 # ---------------------------------------------------------
-# 2. 세션 상태(Session State) 초기화 로직 (오류 없는 안전한 리셋)
+# 2. 세션 상태(Session State) 초기화 로직
 # ---------------------------------------------------------
 default_data = pd.DataFrame([
     {"과목": "수학", "목표점수": 90, "난이도(1~5)": 5},
@@ -43,16 +43,11 @@ with head_col1:
 with head_col2:
     st.button("🔄 입력 초기화", on_click=reset_data)
 
-# 동적 데이터 에디터 위젯
+# 에러 없는 안정적인 동적 데이터 에디터 위젯
 edited_df = st.data_editor(
     default_data,
     key=f"data_editor_{st.session_state['editor_key']}",
     num_rows="dynamic",
-    column_config={
-        "과목": st.column_config.TextColumn("과목명", required=True),
-        "목표점수": st.column_config.NumberColumn("목표 점수", min_value=0, max_value=100, step=5),
-        "난이도(1~5)": st.column_config.NumberColumn("난이도 (1:쉬움 ~ 5:어려움)", min_value=1, max_value=5, step=1)
-    },
     use_container_width=True
 )
 
@@ -67,34 +62,38 @@ if st.button("🚀 학습 스케줄 계산하기", type="primary"):
         st.error("⚠️ 시험 날짜는 오늘 이후(D-1 이상)로 설정해야 합니다!")[cite: 1]
     
     # [예외 처리 2] 입력 데이터 존재 여부 검증
-    elif edited_df.empty or edited_df["과목"].dropna().astype(str).str.strip().eq("").all():
-        st.warning("⚠️ 최소 1개 이상의 과목명을 입력해 주세요.")[cite: 1]
+    elif edited_df.empty or "과목" not in edited_df.columns:
+        st.warning("⚠️ 최소 1개 이상의 과목 정보를 입력해 주세요.")[cite: 1]
     
     else:
-        # 데이터 정제 및 타입 안전 변환
+        # 데이터 정제 및 안전한 타입 변환
         df = edited_df.dropna(subset=["과목"]).copy()
         df["과목"] = df["과목"].astype(str).str.strip()
         df = df[df["과목"] != ""]
-        df["목표점수"] = pd.to_numeric(df["목표점수"], errors='coerce').fillna(0)
-        df["난이도(1~5)"] = pd.to_numeric(df["난이도(1~5)"], errors='coerce').fillna(1)
+        
+        # 숫자 타입 강제 변환 (문자 입력 시 0 또는 기본값 처리)
+        df["목표점수"] = pd.to_numeric(df.get("목표점수", 0), errors='coerce').fillna(0)
+        df["난이도(1~5)"] = pd.to_numeric(df.get("난이도(1~5)", 1), errors='coerce').fillna(1)
 
+        if df.empty:
+            st.warning("⚠️ 올바른 과목명을 입력해 주세요.")
         # [예외 처리 3] 중복 과목명 검증
-        if df["과목"].duplicated().any():
+        elif df["과목"].duplicated().any():
             st.warning("⚠️ 중복된 과목명이 있습니다. 과목 이름을 다르게 설정해 주세요.")
         else:
             # 과목별 중요도 가중치 연산 (목표점수 * 난이도)
             df["중요도"] = df["목표점수"] * df["난이도(1~5)"]
             total_weight = df["중요도"].sum()
 
-            # [예외 처리 4] 중요도 합계 0 방지 (ZeroDivisionError 예방)
+            # [예외 처리 4] 중요도 합계 0 방지
             if total_weight == 0:
                 st.error("⚠️ 모든 과목의 목표 점수 또는 난이도가 0일 수 없습니다.")
             else:
-                # 권장 공부 시간 분배 연산 (소수점 첫째 자리 반올림)
+                # 권장 공부 시간 분배 연산
                 df["일일 권장 공부시간(시간)"] = (df["중요도"] / total_weight * daily_hours).round(1)
 
                 # ---------------------------------------------------------
-                # 5. 결과 시각화 및 출력 영역 (버튼 클릭 시에만 출력)
+                # 5. 결과 시각화 및 출력 영역
                 # ---------------------------------------------------------
                 st.divider()
                 st.success("🎉 개인 맞춤형 학습 스케줄이 성공적으로 생성되었습니다!")
@@ -111,7 +110,7 @@ if st.button("🚀 학습 스케줄 계산하기", type="primary"):
                     use_container_width=True
                 )
 
-                # 막대 형태 시각화 (기본 진행률 바 및 텍스트 조합으로 100% 에러 차단)
+                # 막대 형태 시각화 (진행률 바)
                 st.subheader("📊 과목별 공부 시간 비중")
                 for index, row in df.iterrows():
                     subject = row["과목"]
